@@ -1,0 +1,5 @@
+DOMAIN_NAME=thde-sou.42.fr
+
+MYSQL_DATABASE=wordpress
+MYSQL_USER=wpuser
+
