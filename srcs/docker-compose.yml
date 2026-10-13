@@ -12,8 +12,18 @@ services:
     build:
       context: ./requirements/wordpress
     container_name: wordpress
+    env_file:
+      - .env
+    secrets:
+      - db_password
+      - wp_admin_password
+      - wp_user_password
+    volumes:
+      - wordpress_data:/var/www/html
     networks:
       - inception
+    depends_on:
+      - mariadb
 
   mariadb:
     build:
@@ -42,6 +52,15 @@ secrets:
   db_root_password:
     file: ../secrets/db_root_password.txt
 
+  wp_admin_password:
+    file: ../secrets/wp_admin_password.txt
+
+  wp_user_password:
+    file: ../secrets/wp_user_password.txt
+
 volumes:
   mariadb_data:
     name: mariadb_data
+
+  wordpress_data:
+    name: wordpress_data
