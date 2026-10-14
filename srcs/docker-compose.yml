@@ -3,15 +3,21 @@ services:
     build:
       context: ./requirements/nginx
     container_name: nginx
+    restart: on-failure
     ports:
       - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
     networks:
       - inception
+    depends_on:
+      - wordpress
 
   wordpress:
     build:
       context: ./requirements/wordpress
     container_name: wordpress
+    restart: on-failure
     env_file:
       - .env
     secrets:
