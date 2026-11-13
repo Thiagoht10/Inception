@@ -70,6 +70,17 @@ secrets:
 volumes:
   mariadb_data:
     name: mariadb_data
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/thde-sou/data/mariadb
+      o: bind
 
+  volumes:
   wordpress_data:
     name: wordpress_data
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/thde-sou/data/wordpress
+      o: bind
