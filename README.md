@@ -16,9 +16,9 @@ The current implementation uses Debian Bookworm as the base image for each servi
 | WordPress + PHP-FPM | Website, administration panel and PHP execution | MariaDB at `mariadb:3306` |
 | MariaDB | WordPress database | Internal bridge network only |
 
-Only NGINX publishes a host port. Its configuration permits TLS 1.2 and TLS 1.3 and uses a self-signed certificate generated during the image build. All services use the `inception` bridge network and an `on-failure` restart policy.
+Only NGINX publishes a host port. Its configuration permits TLS 1.2 and TLS 1.3 and uses a self-signed certificate generated during the image build. All services use the `inception` bridge network and an `unless-stopped` restart policy.
 
-The WordPress files are shared between NGINX and WordPress through `wordpress_data`. Database files use `mariadb_data`. The Compose file currently targets `/home/thde-sou/data/wordpress` and `/home/thde-sou/data/mariadb` on the host.
+The WordPress files are shared between NGINX and WordPress through `wordpress_data`. Database files use `mariadb_data`. Compose declares ordinary named volumes. With the Docker daemon configured as described in [DEV_DOC.md](DEV_DOC.md), their host paths are `/home/thde-sou/data/docker/volumes/wordpress_data/_data` and `/home/thde-sou/data/docker/volumes/mariadb_data/_data`. Replace `thde-sou` with your learner login when configuring the VM.
 
 ### Sources and design choices
 
@@ -46,17 +46,19 @@ A Docker bridge network provides service-name resolution and isolates internal s
 
 ### Docker Volumes vs Bind Mounts
 
-Docker volumes have a Docker-managed lifecycle and can be shared between containers. Bind mounts map a specific host path directly into a container. The current named-volume declarations use the local driver with `o: bind` and explicit host directories. This implementation must be reviewed against the supplied subject's prohibition on bind mounts before claiming compliance.
+Docker volumes have a Docker-managed lifecycle and can be shared between containers. Bind mounts map a specific host path directly into a container. The current declarations use the local driver without bind options. The Docker daemon's `data-root` must be configured under `/home/<learner-login>/data` so that Docker-managed volume data resides in the location required by the subject. Verify the active daemon configuration and volume mountpoints on the VM.
 
 ## Instructions
 
 1. Prepare a Linux VM with Docker Engine, the Docker Compose plugin and GNU Make.
-2. Follow [DEV_DOC.md](DEV_DOC.md) to create `srcs/.env`, the four password files and the host data directories.
-3. Review the pending configuration issues below before starting the stack.
-4. Map `thde-sou.42.fr` to the VM IP address on the machine running your browser.
+2. Follow [DEV_DOC.md](DEV_DOC.md) to create `srcs/.env` and the four password files, configure Docker storage through `daemon.json`, and prepare any required migration of existing data.
+3. Complete the configuration checks below before starting the stack.
+4. Inside the VM, edit `/etc/hosts` with `sudo` and add `127.0.0.1 thde-sou.42.fr`, as explained in [USER_DOC.md](USER_DOC.md).
 5. From the repository root, run `make`.
-6. Open `https://thde-sou.42.fr`; the administration panel is at `/wp-admin/`.
+6. Using a browser inside the VM, open `https://thde-sou.42.fr`; the administration panel is at `/wp-admin/`. This access method requires a graphical environment and a browser in the VM.
 7. Run `make down` to stop and remove the containers while preserving storage.
+
+`make clean` also preserves the volumes. **`make fclean` deletes both named volumes and their website and database data, as well as service images. `make re` performs the same deletion before rebuilding and starting the stack.** Back up existing data before using either command.
 
 See [USER_DOC.md](USER_DOC.md) for everyday operation and [DEV_DOC.md](DEV_DOC.md) for setup, maintenance and persistence details.
 
@@ -67,8 +69,8 @@ This documentation was prepared from the source files; no build or running-stack
 Before evaluation:
 
 - Validate the Compose configuration.
-- Resolve the volume-driver configuration against the supplied subject's storage requirements.
-- Reconcile the Makefile's `$(HOME)/data` directories with the fixed `/home/thde-sou/data` paths used by Compose, especially when using another VM account or `sudo`.
+- Verify that the active Docker `data-root` is `/home/<learner-login>/data/docker`.
+- After volume creation, verify that both mountpoints are under that directory and their options contain no bind mounts. Previously created volumes retain their options until explicitly migrated or recreated.
 - Verify the base-image version against the required penultimate stable release at evaluation time.
 - Test startup, HTTPS, both WordPress accounts, crash recovery and persistence after container recreation and VM restart.
 

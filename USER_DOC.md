@@ -4,7 +4,7 @@
 
 The stack provides a WordPress website and its administration panel over HTTPS. NGINX receives browser requests, PHP-FPM runs WordPress, and MariaDB stores posts, accounts and settings. Only HTTPS port 443 is exposed to the host.
 
-These instructions assume the initial setup in [DEV_DOC.md](DEV_DOC.md) is complete. Known configuration issues and validation limits are listed in [README.md](README.md).
+These instructions assume the initial setup in [DEV_DOC.md](DEV_DOC.md) is complete. Configuration checks and validation limits are listed in [README.md](README.md).
 
 ## Start and stop
 
@@ -19,19 +19,27 @@ make down     # Stop and remove containers and the Compose network
 
 `make down` preserves the persistent volumes and host data. Starting again with `make` should reuse the existing website and database.
 
-Do not use `make fclean` or `make re` for routine shutdown: they remove volume registrations and images. See the developer documentation before using them.
+**Do not use `make fclean` or `make re` for routine shutdown: they delete both persistent volumes, including the WordPress files and database, as well as service images.** `make re` then rebuilds and starts the stack with new volumes. Back up your data before either operation; see [DEV_DOC.md](DEV_DOC.md) for backup guidance. Use `make down` or `make clean` when you want to preserve the website and database.
 
 ## Access the website
 
 The current configured domain is `thde-sou.42.fr`.
 
-On the machine running your browser, add an entry to `/etc/hosts` using the VM's actual IP address:
+These instructions use a browser inside the VM and require a graphical environment there. Configure `/etc/hosts` **inside the VM**, using its administrator privileges:
 
-```text
-<VM_IP> thde-sou.42.fr
+```sh
+sudo nano /etc/hosts
 ```
 
-Replace `<VM_IP>` before saving. Use `127.0.0.1` only if the service is reachable on that machine's loopback interface, directly or through configured forwarding.
+Add this entry without removing existing lines:
+
+```text
+127.0.0.1 thde-sou.42.fr
+```
+
+Save the file, then open the following addresses in the browser **inside the VM**. Here, `127.0.0.1` refers to the VM itself, where Docker publishes NGINX on port 443. Replace `thde-sou` with your learner login consistently with the project configuration.
+
+This does not require editing `/etc/hosts` on the physical school computer. The VM entry only affects name resolution inside the VM; it does not configure a browser running on the physical computer.
 
 - Website: `https://thde-sou.42.fr`
 - Administration panel: `https://thde-sou.42.fr/wp-admin/`
@@ -78,4 +86,4 @@ curl -kI https://thde-sou.42.fr
 
 `-k` skips certificate verification for this self-signed local setup; it does not validate certificate trust. An HTTP response confirms connectivity, but login and page checks are still needed.
 
-If the domain cannot be found, check the hosts entry and VM IP. If the connection fails, check port 443 and container status. For a 502 response, inspect WordPress/PHP-FPM logs and then MariaDB logs.
+If the domain cannot be found, confirm that the browser is running inside the VM and check the entry in the VM's `/etc/hosts`. If the connection fails, check port 443 and container status. For a 502 response, inspect WordPress/PHP-FPM logs and then MariaDB logs.

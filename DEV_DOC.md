@@ -13,7 +13,7 @@ make --version
 docker info
 ```
 
-Run subsequent commands from the repository root with a user permitted to access Docker. Avoid running the Makefile with a different home directory: its directory creation uses `$(HOME)`.
+Run subsequent commands from the repository root with a user permitted to access Docker. The Makefile delegates to Docker Compose; volume storage is managed by Docker using the daemon configuration described below.
 
 ## Local configuration
 
@@ -116,7 +116,7 @@ After the stack creates the volumes with the configuration above, their expected
 | `wordpress_data` | `/var/www/html` in WordPress and NGINX | `/home/thde-sou/data/docker/volumes/wordpress_data/_data` |
 | `mariadb_data` | `/var/lib/mysql` in MariaDB | `/home/thde-sou/data/docker/volumes/mariadb_data/_data` |
 
-Docker creates and manages these volume directories. The current Makefile still creates `$HOME/data/wordpress` and `$HOME/data/mariadb`; these are unused by the current Compose configuration. That directory-creation line is obsolete and remains to be removed from the Makefile. Do not delete those directories without checking for data from an older installation.
+Docker creates and manages these volume directories. The Makefile no longer creates `$HOME/data/wordpress` or `$HOME/data/mariadb`; these paths are unused by the current Compose configuration. If they remain from an older installation, check and back up their contents before removing them.
 
 After launch, verify the actual mountpoints and options:
 
@@ -144,7 +144,15 @@ Resolve reported errors before building. Do not share unrestricted `docker compo
 
 ## Build and launch
 
-Map `thde-sou.42.fr` to the VM IP on the browser's machine, then run:
+Inside the VM, edit `/etc/hosts` using `sudo nano /etc/hosts` and add this line while preserving existing entries:
+
+```text
+127.0.0.1 thde-sou.42.fr
+```
+
+Use your learner login consistently with the domain configured for the project. This access method uses a browser inside the VM and requires a graphical environment there. The physical school computer does not need an `/etc/hosts` change.
+
+From the repository root inside the VM, run:
 
 ```sh
 make build    # Build only
@@ -177,7 +185,7 @@ NGINX configuration is copied into its image. Rebuild and recreate it after conf
 
 WordPress uploads, plugins, themes and `wp-config.php` persist in `wordpress_data`. Posts, accounts and site settings persist in `mariadb_data`. `wp-config.php` contains the database credential generated at initialization; protect backups accordingly.
 
-Normal container removal preserves both sets of data. VM restart preserves them if the host storage remains intact. The configured `on-failure` policy concerns process failures; verify startup after a VM reboot explicitly.
+Normal container removal preserves both sets of data. VM restart preserves them if the host storage remains intact. All three services use `restart: unless-stopped`: existing containers restart after failures and Docker daemon restarts unless they were explicitly stopped. Containers removed by `make down` must be recreated with `make up`. Ensure the Docker service starts on boot and verify behavior after a VM reboot.
 
 Back up both the website files and database before destructive maintenance. Use a database-aware dump or stop the stack before copying database files to obtain a consistent backup. Store backups privately outside the directories being maintained and test restoration. Never delete host data directories as a routine cleanup step.
 
