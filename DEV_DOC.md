@@ -53,18 +53,86 @@ git check-ignore srcs/.env secrets/*.txt
 
 Compose mounts the passwords under `/run/secrets/` in the relevant containers. WordPress receives three secrets; MariaDB receives the database user and root secrets. NGINX receives none.
 
-## Storage and configuration review
+## Storage and Docker daemon configuration
 
-The current Compose file declares:
+The Compose file declares two Docker-managed named volumes without `driver_opts` or bind mounts. Their host location depends on the Docker daemon's `data-root` setting.
+
+The supplied subject requires the volume data to reside under `/home/login/data`, with `login` replaced by the learner's username. It does not prescribe names or nesting levels for directories inside `data`. Configuring `data-root` as `/home/thde-sou/data/docker` therefore places both stores under the required directory. Replace `thde-sou` with your own learner login throughout these instructions.
+
+### Configure a fresh VM
+
+These instructions assume Docker Engine running as a system service on a Linux VM with systemd, not rootless Docker or Docker Desktop.
+
+1. Check the service and create the configuration and storage directories:
+
+   ```sh
+   sudo systemctl status docker --no-pager
+   sudo mkdir -p /etc/docker /home/thde-sou/data/docker
+   sudo nano /etc/docker/daemon.json
+   ```
+
+2. If the file is empty, save this JSON. If it already contains settings, preserve them and add or update `data-root` within the existing JSON object:
+
+   ```json
+   {
+     "data-root": "/home/thde-sou/data/docker"
+   }
+   ```
+
+   Use an absolute path: this file does not expand `${HOME}` as Compose does. In Nano, save with Ctrl+O, confirm with Enter, then exit with Ctrl+X.
+
+3. Validate the file:
+
+   ```sh
+   sudo dockerd --validate --config-file=/etc/docker/daemon.json
+   ```
+
+   Continue only after `configuration OK`. For an existing installation, complete the migration preparation below before restarting Docker.
+
+4. Apply the configuration and verify the active directory:
+
+   ```sh
+   sudo systemctl restart docker
+   sudo docker info --format '{{.DockerRootDir}}'
+   ```
+
+   The expected result is `/home/thde-sou/data/docker`. Creating the JSON file alone does not activate this setting. The setting affects the entire Docker daemon, not only this project.
+
+If Docker fails to start, inspect the error before proceeding:
+
+```sh
+sudo systemctl status docker --no-pager -l
+sudo journalctl -u docker.service -n 60 --no-pager
+```
+
+See the Docker documentation for [daemon configuration](https://docs.docker.com/engine/daemon/) and [startup troubleshooting](https://docs.docker.com/engine/daemon/troubleshoot/).
+
+### Volume locations and the Makefile
+
+After the stack creates the volumes with the configuration above, their expected locations are:
 
 | Volume | Container path | Host directory |
 | --- | --- | --- |
-| `wordpress_data` | `/var/www/html` in WordPress and NGINX | `/home/thde-sou/data/wordpress` |
-| `mariadb_data` | `/var/lib/mysql` in MariaDB | `/home/thde-sou/data/mariadb` |
+| `wordpress_data` | `/var/www/html` in WordPress and NGINX | `/home/thde-sou/data/docker/volumes/wordpress_data/_data` |
+| `mariadb_data` | `/var/lib/mysql` in MariaDB | `/home/thde-sou/data/docker/volumes/mariadb_data/_data` |
 
-The Makefile creates `$HOME/data/wordpress` and `$HOME/data/mariadb`. These match Compose only when the home directory is `/home/thde-sou`. Prepare matching directories and ownership on the VM before launch, or reconcile the paths in the implementation.
+Docker creates and manages these volume directories. The current Makefile still creates `$HOME/data/wordpress` and `$HOME/data/mariadb`; these are unused by the current Compose configuration. That directory-creation line is obsolete and remains to be removed from the Makefile. Do not delete those directories without checking for data from an older installation.
 
-The named volumes currently use local-driver `o: bind` options. Review this against the subject's prohibition on bind mounts. This remains a pending implementation issue; the documentation does not certify compliance.
+After launch, verify the actual mountpoints and options:
+
+```sh
+docker volume inspect --format '{{.Name}}: {{.Mountpoint}} options={{json .Options}}' wordpress_data mariadb_data
+```
+
+The mountpoints must be under the configured directory, and the volume options must not include `o: bind`. Changing Compose does not convert previously created volumes with bind options into ordinary named volumes.
+
+### Existing installations and migration
+
+Changing `data-root` does not move existing images, containers or volumes. Do not restart Docker with the new setting until existing data has been backed up and a migration has been prepared. Keep the previous daemon configuration and storage intact until restoration is verified.
+
+For a project previously using `o: bind`, back up both the WordPress files and MariaDB data from their actual existing locations. Use a database dump or stop the stack before copying database files. After switching to the new storage root, create ordinary named volumes and restore the backups into them before starting the application. Preserve file ownership and permissions. Copying only the old Docker storage directory does not convert bind-backed volumes or migrate their external data.
+
+This documentation does not establish that a migration has been performed on any VM. Verify the active Docker root and volume options on the target machine before launching the project.
 
 Check configuration after creating the local files:
 
@@ -101,7 +169,7 @@ docker compose -f srcs/docker-compose.yml exec wordpress wp user list --allow-ro
 docker volume inspect wordpress_data mariadb_data
 ```
 
-`make clean` stops and removes the stack and orphan containers. `make fclean` additionally removes declared volume registrations and service images. `make re` runs that cleanup and then rebuilds and launches the stack. Under the current local-driver configuration, removing volume registrations does not itself erase the host directories; this must not be treated as a backup or a reliable data-reset procedure.
+`make clean` stops and removes the stack and orphan containers while preserving named volumes. `make fclean` uses `down -v` and removes the declared named volumes, including their data, as well as service images. `make re` runs that destructive cleanup and then rebuilds and launches the stack. With ordinary Docker-managed volumes, both `make fclean` and `make re` delete persistent project data; back up before using them.
 
 NGINX configuration is copied into its image. Rebuild and recreate it after configuration changes. Existing WordPress and MariaDB data can cause initialization steps to be skipped, so recreating containers does not apply every configuration or password change to an existing installation.
 
@@ -123,7 +191,8 @@ No runtime verification was performed as part of this documentation change. On t
 - Both WordPress accounts exist with the intended roles; administrator naming follows the subject.
 - A test post and uploaded file survive `make down` followed by `make up`.
 - Crash recovery and VM restart behavior are tested separately.
-- Both persistent stores meet the supplied subject's named-volume requirements.
+- The active Docker root is `/home/<learner-login>/data/docker`, and both volume mountpoints are beneath it with no bind options.
+- Existing data has been restored and checked if this VM was migrated from an older configuration.
 - Local credentials remain excluded from Git.
 
 See [USER_DOC.md](USER_DOC.md) for browser access and everyday troubleshooting.
