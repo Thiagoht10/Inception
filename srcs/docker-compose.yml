@@ -4,7 +4,7 @@ services:
     build:
       context: ./requirements/nginx
     container_name: nginx
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - "443:443"
     volumes:
@@ -19,7 +19,7 @@ services:
     build:
       context: ./requirements/wordpress
     container_name: wordpress
-    restart: on-failure
+    restart: unless-stopped
     env_file:
       - .env
     secrets:
@@ -38,7 +38,7 @@ services:
     build:
       context: ./requirements/mariadb
     container_name: mariadb
-    restart: on-failure
+    restart: unless-stopped
     env_file:
       - .env
     secrets:
