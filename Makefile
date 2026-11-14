@@ -3,6 +3,7 @@ COMPOSE = docker compose -f srcs/docker-compose.yml
 all: up
 
 up:
+	mkdir -p "$(HOME)/data/wordpress" "$(HOME)/data/mariadb"
 	$(COMPOSE) up -d --build
 
 build:
