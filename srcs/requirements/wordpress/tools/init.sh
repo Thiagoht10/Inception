@@ -57,4 +57,7 @@ fi
 
 mkdir -p /run/php
 
+mkdir -p /var/www/html/wp-content/uploads
+chown -R www-data:www-data /var/www/html/wp-content
+
 exec php-fpm8.2 -F
