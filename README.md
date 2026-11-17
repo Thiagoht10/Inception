@@ -64,15 +64,23 @@ See [USER_DOC.md](USER_DOC.md) for everyday operation and [DEV_DOC.md](DEV_DOC.m
 
 ### Current validation status
 
-This documentation was prepared from the source files; no build or running-stack validation was performed for this documentation change.
+The VM was tested against subject version 5.4 on 2026-11-17. The following checks passed:
 
-Before evaluation:
+- Compose validation, startup through `make`, and image rebuilding with `--no-cache`.
+- WordPress installation with newly created volumes, HTTPS responses, and login with both the administrator and author accounts.
+- Upload creation as `www-data`, after correcting ownership of `wp-content`.
+- TLS 1.2/1.3 acceptance and TLS 1.0/1.1 rejection; only port 443 published by the stack.
+- Named volumes without bind options, located under `/home/thde-sou/data/docker/volumes`.
+- Persistence of a test upload and database option after container removal and recreation.
+- Automatic restart of all three containers after terminating their main processes with SIGTERM. This does not cover every crash scenario.
 
-- Validate the Compose configuration.
-- Verify that the active Docker `data-root` is `/home/<learner-login>/data/docker`.
-- After volume creation, verify that both mountpoints are under that directory and their options contain no bind mounts. Previously created volumes retain their options until explicitly migrated or recreated.
-- Verify the base-image version against the required penultimate stable release at evaluation time.
-- Test startup, HTTPS, both WordPress accounts, crash recovery and persistence after container recreation and VM restart.
+A controlled full VM reboot test remains pending. Docker is enabled at boot, but that alone does not establish that the website and its data recover after reboot. Leave the containers running before this test; do not run `make down`, `make clean`, `make fclean`, or `make re` beforehand.
+
+These results describe the tested checkout and VM, not a guarantee for future changes. Repeat the relevant checks before evaluation.
+
+### School submission
+
+The personal development repository and the school submission repository are separate. The planned school submission will contain the project files without importing the personal repository's commit history. Keep `.env` and `secrets/` out of the school repository and verify both its tracked files and history before submission. Ignoring a file does not remove it from existing commits. Credentials previously committed to the personal repository should be replaced even when that history is not submitted.
 
 ## Resources
 
@@ -89,4 +97,4 @@ Before evaluation:
 
 ### AI usage
 
-AI assisted with reading the supplied subject, inspecting the project configuration and drafting `README.md`, `USER_DOC.md` and `DEV_DOC.md`. This documentation task did not modify service configuration or validate the running infrastructure. The author must review the instructions, test the project and be able to explain its design.
+AI assisted with interpreting the supplied subject, reviewing Docker and service configuration, drafting and updating the documentation, diagnosing the WordPress upload permission issue, suggesting the ownership correction, and running build, HTTPS, login, upload, persistence and restart checks on the VM. The author reviewed and applied the upload correction and remains responsible for understanding the implementation and verifying it before evaluation.

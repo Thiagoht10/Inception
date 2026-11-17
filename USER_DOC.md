@@ -78,7 +78,7 @@ For an existing WordPress installation, manage website passwords through WordPre
 docker compose -f srcs/docker-compose.yml logs --tail=100 nginx wordpress mariadb
 ```
 
-For a command-line HTTPS connectivity check:
+For a command-line HTTPS connectivity check, use `curl` inside the VM (installation is covered in [DEV_DOC.md](DEV_DOC.md)):
 
 ```sh
 curl -kI https://thde-sou.42.fr
@@ -86,4 +86,4 @@ curl -kI https://thde-sou.42.fr
 
 `-k` skips certificate verification for this self-signed local setup; it does not validate certificate trust. An HTTP response confirms connectivity, but login and page checks are still needed.
 
-If the domain cannot be found, confirm that the browser is running inside the VM and check the entry in the VM's `/etc/hosts`. If the connection fails, check port 443 and container status. For a 502 response, inspect WordPress/PHP-FPM logs and then MariaDB logs.
+If the domain cannot be found, confirm that the browser is running inside the VM and check the entry in the VM's `/etc/hosts`. If the connection fails, check port 443 and container status. A temporary 502 response can occur just after startup while WordPress initialization is still running and PHP-FPM is not ready. Wait for initialization to finish and reload the page. If the 502 persists, inspect WordPress/PHP-FPM logs and then MariaDB logs; a container marked `Up` alone does not prove readiness.

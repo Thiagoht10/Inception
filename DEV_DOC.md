@@ -2,7 +2,14 @@
 
 ## Environment from scratch
 
-Use a Linux virtual machine with Docker Engine, the Docker Compose plugin, GNU Make and access to package repositories and WordPress/WP-CLI downloads. The current Dockerfiles use Debian Bookworm and PHP 8.2 paths. Confirm base-image eligibility against the supplied subject before evaluation.
+Use a Linux virtual machine with Docker Engine, the Docker Compose plugin, GNU Make, `curl` for the documented HTTPS checks, and access to package repositories and WordPress/WP-CLI downloads. The current Dockerfiles use Debian Bookworm and PHP 8.2 paths. Confirm base-image eligibility against the supplied subject before evaluation.
+
+Install the command-line HTTP client inside the Debian VM if it is missing:
+
+```sh
+sudo apt-get update
+sudo apt-get install -y curl
+```
 
 Verify prerequisites:
 
@@ -10,6 +17,7 @@ Verify prerequisites:
 docker --version
 docker compose version
 make --version
+curl --version
 docker info
 ```
 
@@ -44,6 +52,16 @@ secrets/wp_user_password.txt
 ```
 
 Use an editor or password manager to write the values without placing passwords in shell history. Restrict the directory and files to the owner (`chmod 700 secrets` and `chmod 600 secrets/*.txt`). The existing `.gitignore` excludes `/secrets/` and `/srcs/.env`.
+
+Apply and verify local file permissions inside the VM:
+
+```sh
+chmod 700 secrets
+chmod 600 secrets/*.txt srcs/.env
+stat -c '%a %n' secrets secrets/*.txt srcs/.env
+```
+
+Expect `700` for `secrets` and `600` for the files. Compose services currently start as root and can read these owner-only secret source files.
 
 Check exclusion without displaying contents:
 
@@ -162,7 +180,7 @@ make ps
 
 NGINX generates a self-signed certificate at image build time. WordPress waits for MariaDB, downloads WordPress if missing, creates `wp-config.php` if missing, installs the site if needed and creates the author if absent. MariaDB initializes its system tables if needed and uses `/var/lib/mysql/.inception-initialized` to record completed project initialization.
 
-`depends_on` declares startup ordering; it does not by itself prove database readiness. The WordPress script supplies its own database wait. The services then run NGINX, PHP-FPM and MariaDB in the foreground.
+`depends_on` declares startup ordering; it does not by itself prove database readiness. The WordPress script supplies its own database wait. The WordPress script also creates `wp-content/uploads` and assigns ownership of `wp-content` to `www-data`, allowing uploads. The services then run NGINX, PHP-FPM and MariaDB in the foreground. NGINX can return 502 while WordPress initialization is still in progress; check HTTPS again after PHP-FPM starts.
 
 ## Manage containers and volumes
 
@@ -191,7 +209,7 @@ Back up both the website files and database before destructive maintenance. Use 
 
 ## Validation checklist
 
-No runtime verification was performed as part of this documentation change. On the VM, verify:
+Runtime checks performed on 2026-11-17 are recorded in [README.md](README.md#current-validation-status). Use this checklist for subsequent changes and before evaluation:
 
 - Compose configuration validation and image build succeed.
 - Only NGINX publishes host port 443; PHP-FPM and MariaDB remain internal.
@@ -201,6 +219,8 @@ No runtime verification was performed as part of this documentation change. On t
 - Crash recovery and VM restart behavior are tested separately.
 - The active Docker root is `/home/<learner-login>/data/docker`, and both volume mountpoints are beneath it with no bind options.
 - Existing data has been restored and checked if this VM was migrated from an older configuration.
-- Local credentials remain excluded from Git.
+- Local credentials remain excluded from Git. For the separate school submission, verify its tracked files and commit history without importing the personal repository history.
+
+For a controlled reboot check, first confirm the site works and that a test post and uploaded file exist. Leave the containers running, execute `sudo reboot` inside the VM, reconnect, and check `docker ps`, HTTPS, login and both test items without running `make`. Remove only the test items afterward.
 
 See [USER_DOC.md](USER_DOC.md) for browser access and everyday troubleshooting.
