@@ -12,6 +12,8 @@ RUN openssl req -x509 -nodes \
 
 COPY conf/default.conf /etc/nginx/conf.d/default.conf
 
+RUN rm -f /etc/nginx/sites-enabled/default
+
 EXPOSE 443
 
 CMD ["nginx", "-g", "daemon off;"]
