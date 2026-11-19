@@ -97,4 +97,4 @@ The personal development repository and the school submission repository are sep
 
 ### AI usage
 
-AI assisted with interpreting the supplied subject, reviewing Docker and service configuration, drafting and updating the documentation, diagnosing the WordPress upload permission issue, suggesting the ownership correction, and running build, HTTPS, login, upload, persistence and restart checks on the VM. The author reviewed and applied the upload correction and remains responsible for understanding the implementation and verifying it before evaluation.
+AI assisted in analyzing the project configuration and in drafting the `README.md`, `USER_DOC.md`, and `DEV_DOC.md` files. AI was also used to explain certain configurations and concepts.
